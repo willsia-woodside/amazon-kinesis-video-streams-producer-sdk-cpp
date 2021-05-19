@@ -138,162 +138,162 @@ typedef struct _CustomData {
 
 namespace com { namespace amazonaws { namespace kinesis { namespace video {
 
-class SampleClientCallbackProvider : public ClientCallbackProvider {
-public:
+                class SampleClientCallbackProvider : public ClientCallbackProvider {
+                public:
 
-    UINT64 getCallbackCustomData() override {
-        return reinterpret_cast<UINT64> (this);
-    }
+                    UINT64 getCallbackCustomData() override {
+                        return reinterpret_cast<UINT64> (this);
+                    }
 
-    StorageOverflowPressureFunc getStorageOverflowPressureCallback() override {
-        return storageOverflowPressure;
-    }
+                    StorageOverflowPressureFunc getStorageOverflowPressureCallback() override {
+                        return storageOverflowPressure;
+                    }
 
-    static STATUS storageOverflowPressure(UINT64 custom_handle, UINT64 remaining_bytes);
-};
+                    static STATUS storageOverflowPressure(UINT64 custom_handle, UINT64 remaining_bytes);
+                };
 
-class SampleStreamCallbackProvider : public StreamCallbackProvider {
-    UINT64 custom_data_;
-public:
-    SampleStreamCallbackProvider(UINT64 custom_data) : custom_data_(custom_data) {}
+                class SampleStreamCallbackProvider : public StreamCallbackProvider {
+                    UINT64 custom_data_;
+                public:
+                    SampleStreamCallbackProvider(UINT64 custom_data) : custom_data_(custom_data) {}
 
-    UINT64 getCallbackCustomData() override {
-        return custom_data_;
-    }
+                    UINT64 getCallbackCustomData() override {
+                        return custom_data_;
+                    }
 
-    StreamConnectionStaleFunc getStreamConnectionStaleCallback() override {
-        return streamConnectionStaleHandler;
-    };
+                    StreamConnectionStaleFunc getStreamConnectionStaleCallback() override {
+                        return streamConnectionStaleHandler;
+                    };
 
-    StreamErrorReportFunc getStreamErrorReportCallback() override {
-        return streamErrorReportHandler;
-    };
+                    StreamErrorReportFunc getStreamErrorReportCallback() override {
+                        return streamErrorReportHandler;
+                    };
 
-    DroppedFrameReportFunc getDroppedFrameReportCallback() override {
-        return droppedFrameReportHandler;
-    };
+                    DroppedFrameReportFunc getDroppedFrameReportCallback() override {
+                        return droppedFrameReportHandler;
+                    };
 
-    FragmentAckReceivedFunc getFragmentAckReceivedCallback() override {
-        return fragmentAckReceivedHandler;
-    };
+                    FragmentAckReceivedFunc getFragmentAckReceivedCallback() override {
+                        return fragmentAckReceivedHandler;
+                    };
 
-private:
-    static STATUS
-    streamConnectionStaleHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
-                                 UINT64 last_buffering_ack);
+                private:
+                    static STATUS
+                    streamConnectionStaleHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
+                                                 UINT64 last_buffering_ack);
 
-    static STATUS
-    streamErrorReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle, UPLOAD_HANDLE upload_handle, UINT64 errored_timecode,
-                             STATUS status_code);
+                    static STATUS
+                    streamErrorReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle, UPLOAD_HANDLE upload_handle, UINT64 errored_timecode,
+                                             STATUS status_code);
 
-    static STATUS
-    droppedFrameReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
-                              UINT64 dropped_frame_timecode);
+                    static STATUS
+                    droppedFrameReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
+                                              UINT64 dropped_frame_timecode);
 
-    static STATUS
-    fragmentAckReceivedHandler( UINT64 custom_data, STREAM_HANDLE stream_handle,
-                                UPLOAD_HANDLE upload_handle, PFragmentAck pFragmentAck);
-};
+                    static STATUS
+                    fragmentAckReceivedHandler( UINT64 custom_data, STREAM_HANDLE stream_handle,
+                                                UPLOAD_HANDLE upload_handle, PFragmentAck pFragmentAck);
+                };
 
-class SampleCredentialProvider : public StaticCredentialProvider {
-    // Test rotation period is 40 second for the grace period.
-    const std::chrono::duration<uint64_t> ROTATION_PERIOD = std::chrono::seconds(DEFAULT_CREDENTIAL_ROTATION_SECONDS);
-public:
-    SampleCredentialProvider(const Credentials &credentials) :
-            StaticCredentialProvider(credentials) {}
+                class SampleCredentialProvider : public StaticCredentialProvider {
+                    // Test rotation period is 40 second for the grace period.
+                    const std::chrono::duration<uint64_t> ROTATION_PERIOD = std::chrono::seconds(DEFAULT_CREDENTIAL_ROTATION_SECONDS);
+                public:
+                    SampleCredentialProvider(const Credentials &credentials) :
+                            StaticCredentialProvider(credentials) {}
 
-    void updateCredentials(Credentials &credentials) override {
-        // Copy the stored creds forward
-        credentials = credentials_;
+                    void updateCredentials(Credentials &credentials) override {
+                        // Copy the stored creds forward
+                        credentials = credentials_;
 
-        // Update only the expiration
-        auto now_time = std::chrono::duration_cast<std::chrono::seconds>(
-                systemCurrentTime().time_since_epoch());
-        auto expiration_seconds = now_time + ROTATION_PERIOD;
-        credentials.setExpiration(std::chrono::seconds(expiration_seconds.count()));
-        LOG_INFO("New credentials expiration is " << credentials.getExpiration().count());
-    }
-};
+                        // Update only the expiration
+                        auto now_time = std::chrono::duration_cast<std::chrono::seconds>(
+                                systemCurrentTime().time_since_epoch());
+                        auto expiration_seconds = now_time + ROTATION_PERIOD;
+                        credentials.setExpiration(std::chrono::seconds(expiration_seconds.count()));
+                        LOG_INFO("New credentials expiration is " << credentials.getExpiration().count());
+                    }
+                };
 
-class SampleDeviceInfoProvider : public DefaultDeviceInfoProvider {
-public:
-    device_info_t getDeviceInfo() override {
-        auto device_info = DefaultDeviceInfoProvider::getDeviceInfo();
-        // Set the storage size to 128mb
-        device_info.storageInfo.storageSize = 128 * 1024 * 1024;
-        return device_info;
-    }
-};
+                class SampleDeviceInfoProvider : public DefaultDeviceInfoProvider {
+                public:
+                    device_info_t getDeviceInfo() override {
+                        auto device_info = DefaultDeviceInfoProvider::getDeviceInfo();
+                        // Set the storage size to 128mb
+                        device_info.storageInfo.storageSize = 128 * 1024 * 1024;
+                        return device_info;
+                    }
+                };
 
-STATUS
-SampleClientCallbackProvider::storageOverflowPressure(UINT64 custom_handle, UINT64 remaining_bytes) {
-    UNUSED_PARAM(custom_handle);
-    LOG_WARN("Reporting storage overflow. Bytes remaining " << remaining_bytes);
-    return STATUS_SUCCESS;
-}
+                STATUS
+                SampleClientCallbackProvider::storageOverflowPressure(UINT64 custom_handle, UINT64 remaining_bytes) {
+                    UNUSED_PARAM(custom_handle);
+                    LOG_WARN("Reporting storage overflow. Bytes remaining " << remaining_bytes);
+                    return STATUS_SUCCESS;
+                }
 
-STATUS SampleStreamCallbackProvider::streamConnectionStaleHandler(UINT64 custom_data,
-                                                                  STREAM_HANDLE stream_handle,
-                                                                  UINT64 last_buffering_ack) {
-    LOG_WARN("Reporting stream stale. Last ACK received " << last_buffering_ack);
-    return STATUS_SUCCESS;
-}
+                STATUS SampleStreamCallbackProvider::streamConnectionStaleHandler(UINT64 custom_data,
+                                                                                  STREAM_HANDLE stream_handle,
+                                                                                  UINT64 last_buffering_ack) {
+                    LOG_WARN("Reporting stream stale. Last ACK received " << last_buffering_ack);
+                    return STATUS_SUCCESS;
+                }
 
-STATUS
-SampleStreamCallbackProvider::streamErrorReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
-                                                       UPLOAD_HANDLE upload_handle, UINT64 errored_timecode, STATUS status_code) {
-    LOG_ERROR("Reporting stream error. Errored timecode: " << errored_timecode << " Status: "
-                                                           << status_code);
-    CustomData *data = reinterpret_cast<CustomData *>(custom_data);
-    bool terminate_pipeline = false;
+                STATUS
+                SampleStreamCallbackProvider::streamErrorReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
+                                                                       UPLOAD_HANDLE upload_handle, UINT64 errored_timecode, STATUS status_code) {
+                    LOG_ERROR("Reporting stream error. Errored timecode: " << errored_timecode << " Status: "
+                                                                           << status_code);
+                    CustomData *data = reinterpret_cast<CustomData *>(custom_data);
+                    bool terminate_pipeline = false;
 
-    // Terminate pipeline if error is not retriable or if error is retriable but we are streaming file.
-    // When streaming file, we choose to terminate the pipeline on error because the easiest way to recover
-    // is to stream the file from the beginning again.
-    // In realtime streaming, retriable error can be handled underneath. Otherwise terminate pipeline
-    // and store error status if error is fatal.
-    if ((IS_RETRIABLE_ERROR(status_code) && data->streamSource == FILE_SOURCE) ||
-        (!IS_RETRIABLE_ERROR(status_code) && !IS_RECOVERABLE_ERROR(status_code))) {
-        data->stream_status = status_code;
-        terminate_pipeline = true;
-    }
+                    // Terminate pipeline if error is not retriable or if error is retriable but we are streaming file.
+                    // When streaming file, we choose to terminate the pipeline on error because the easiest way to recover
+                    // is to stream the file from the beginning again.
+                    // In realtime streaming, retriable error can be handled underneath. Otherwise terminate pipeline
+                    // and store error status if error is fatal.
+                    if ((IS_RETRIABLE_ERROR(status_code) && data->streamSource == FILE_SOURCE) ||
+                        (!IS_RETRIABLE_ERROR(status_code) && !IS_RECOVERABLE_ERROR(status_code))) {
+                        data->stream_status = status_code;
+                        terminate_pipeline = true;
+                    }
 
-    if (terminate_pipeline && data->main_loop != NULL) {
-        LOG_WARN("Terminating pipeline due to unrecoverable stream error: " << status_code);
-        g_main_loop_quit(data->main_loop);
-    }
+                    if (terminate_pipeline && data->main_loop != NULL) {
+                        LOG_WARN("Terminating pipeline due to unrecoverable stream error: " << status_code);
+                        g_main_loop_quit(data->main_loop);
+                    }
 
-    return STATUS_SUCCESS;
-}
+                    return STATUS_SUCCESS;
+                }
 
-STATUS
-SampleStreamCallbackProvider::droppedFrameReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
-                                                        UINT64 dropped_frame_timecode) {
-    LOG_WARN("Reporting dropped frame. Frame timecode " << dropped_frame_timecode);
-    return STATUS_SUCCESS;
-}
+                STATUS
+                SampleStreamCallbackProvider::droppedFrameReportHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
+                                                                        UINT64 dropped_frame_timecode) {
+                    LOG_WARN("Reporting dropped frame. Frame timecode " << dropped_frame_timecode);
+                    return STATUS_SUCCESS;
+                }
 
-STATUS
-SampleStreamCallbackProvider::fragmentAckReceivedHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
-                                                         UPLOAD_HANDLE upload_handle, PFragmentAck pFragmentAck) {
-    CustomData *data = reinterpret_cast<CustomData *>(custom_data);
-    if (data->streamSource == FILE_SOURCE && pFragmentAck->ackType == FRAGMENT_ACK_TYPE_PERSISTED) {
-        std::unique_lock<std::mutex> lk(data->file_list_mtx);
-        uint32_t last_unpersisted_file_idx = data->last_unpersisted_file_idx.load();
-        uint64_t last_frag_ts = data->file_list.at(last_unpersisted_file_idx).last_fragment_ts /
-                                duration_cast<nanoseconds>(milliseconds(DEFAULT_TIMECODE_SCALE_MILLISECONDS)).count();
-        if (last_frag_ts != 0 && last_frag_ts == pFragmentAck->timestamp) {
-            data->last_unpersisted_file_idx = last_unpersisted_file_idx + 1;
-            LOG_INFO("Successfully persisted file " << data->file_list.at(last_unpersisted_file_idx).path);
-        }
-    }
-    LOG_DEBUG("Reporting fragment ack received. Ack timecode " << pFragmentAck->timestamp);
-    return STATUS_SUCCESS;
-}
+                STATUS
+                SampleStreamCallbackProvider::fragmentAckReceivedHandler(UINT64 custom_data, STREAM_HANDLE stream_handle,
+                                                                         UPLOAD_HANDLE upload_handle, PFragmentAck pFragmentAck) {
+                    CustomData *data = reinterpret_cast<CustomData *>(custom_data);
+                    if (data->streamSource == FILE_SOURCE && pFragmentAck->ackType == FRAGMENT_ACK_TYPE_PERSISTED) {
+                        std::unique_lock<std::mutex> lk(data->file_list_mtx);
+                        uint32_t last_unpersisted_file_idx = data->last_unpersisted_file_idx.load();
+                        uint64_t last_frag_ts = data->file_list.at(last_unpersisted_file_idx).last_fragment_ts /
+                                                duration_cast<nanoseconds>(milliseconds(DEFAULT_TIMECODE_SCALE_MILLISECONDS)).count();
+                        if (last_frag_ts != 0 && last_frag_ts == pFragmentAck->timestamp) {
+                            data->last_unpersisted_file_idx = last_unpersisted_file_idx + 1;
+                            LOG_INFO("Successfully persisted file " << data->file_list.at(last_unpersisted_file_idx).path);
+                        }
+                    }
+                    LOG_DEBUG("Reporting fragment ack received. Ack timecode " << pFragmentAck->timestamp);
+                    return STATUS_SUCCESS;
+                }
 
-}  // namespace video
-}  // namespace kinesis
-}  // namespace amazonaws
+            }  // namespace video
+        }  // namespace kinesis
+    }  // namespace amazonaws
 }  // namespace com;
 
 static void eos_cb(GstElement *sink, CustomData *data) {
@@ -403,10 +403,10 @@ static GstFlowReturn on_new_sample(GstElement *sink, CustomData *data) {
         }
 
         put_frame(data->kinesis_video_stream, info.data, info.size, std::chrono::nanoseconds(buffer->pts),
-                               std::chrono::nanoseconds(buffer->dts), kinesis_video_flags);
+                  std::chrono::nanoseconds(buffer->dts), kinesis_video_flags);
     }
 
-CleanUp:
+    CleanUp:
 
     if (info.data != nullptr) {
         gst_buffer_unmap(buffer, &info);
@@ -554,31 +554,31 @@ void kinesis_video_stream_init(CustomData *data) {
     }
 
     unique_ptr<StreamDefinition> stream_definition(new StreamDefinition(
-        data->stream_name,
-        hours(DEFAULT_RETENTION_PERIOD_HOURS),
-        &tags,
-        DEFAULT_KMS_KEY_ID,
-        streaming_type,
-        DEFAULT_CONTENT_TYPE,
-        duration_cast<milliseconds> (seconds(DEFAULT_MAX_LATENCY_SECONDS)),
-        milliseconds(DEFAULT_FRAGMENT_DURATION_MILLISECONDS),
-        milliseconds(DEFAULT_TIMECODE_SCALE_MILLISECONDS),
-        DEFAULT_KEY_FRAME_FRAGMENTATION,
-        DEFAULT_FRAME_TIMECODES,
-        data->use_absolute_fragment_times,
-        DEFAULT_FRAGMENT_ACKS,
-        DEFAULT_RESTART_ON_ERROR,
-        DEFAULT_RECALCULATE_METRICS,
-        0,
-        DEFAULT_STREAM_FRAMERATE,
-        DEFAULT_AVG_BANDWIDTH_BPS,
-        seconds(DEFAULT_BUFFER_DURATION_SECONDS),
-        seconds(DEFAULT_REPLAY_DURATION_SECONDS),
-        seconds(DEFAULT_CONNECTION_STALENESS_SECONDS),
-        DEFAULT_CODEC_ID,
-        DEFAULT_TRACKNAME,
-        nullptr,
-        0));
+            data->stream_name,
+            hours(DEFAULT_RETENTION_PERIOD_HOURS),
+            &tags,
+            DEFAULT_KMS_KEY_ID,
+            streaming_type,
+            DEFAULT_CONTENT_TYPE,
+            duration_cast<milliseconds> (seconds(DEFAULT_MAX_LATENCY_SECONDS)),
+            milliseconds(DEFAULT_FRAGMENT_DURATION_MILLISECONDS),
+            milliseconds(DEFAULT_TIMECODE_SCALE_MILLISECONDS),
+            DEFAULT_KEY_FRAME_FRAGMENTATION,
+            DEFAULT_FRAME_TIMECODES,
+            data->use_absolute_fragment_times,
+            DEFAULT_FRAGMENT_ACKS,
+            DEFAULT_RESTART_ON_ERROR,
+            DEFAULT_RECALCULATE_METRICS,
+            0,
+            DEFAULT_STREAM_FRAMERATE,
+            DEFAULT_AVG_BANDWIDTH_BPS,
+            seconds(DEFAULT_BUFFER_DURATION_SECONDS),
+            seconds(DEFAULT_REPLAY_DURATION_SECONDS),
+            seconds(DEFAULT_CONNECTION_STALENESS_SECONDS),
+            DEFAULT_CODEC_ID,
+            DEFAULT_TRACKNAME,
+            nullptr,
+            0));
     data->kinesis_video_stream = data->kinesis_video_producer->createStreamSync(move(stream_definition));
 
     // reset state
@@ -850,6 +850,31 @@ int gstreamer_live_source_init(int argc, char* argv[], CustomData *data, GstElem
     return 0;
 }
 
+static gboolean bus_message_received (GstBus *bus, GstMessage *msg,  gpointer data)
+{
+    switch (GST_MESSAGE_TYPE(msg)) {
+        case GST_MESSAGE_EOS:
+            LOG_ERROR("END OF STREAM")
+            exit(1);
+            break;
+        case GST_MESSAGE_ERROR: {
+            gchar *debug;
+            GError *error;
+            gst_message_parse_error(msg, &error, &debug);
+            g_free(debug);
+            LOG_ERROR("END OF STREAM")
+            g_error_free(error);
+            exit(1);
+            break;
+        }
+        default:
+            break;
+    }
+
+    return TRUE;
+}
+
+
 int gstreamer_rtsp_source_init(CustomData *data, GstElement *pipeline) {
 
     GstElement *filter, *appsink, *depay, *source, *h264parse;
@@ -889,6 +914,13 @@ int gstreamer_rtsp_source_init(CustomData *data, GstElement *pipeline) {
     gst_bin_add_many(GST_BIN (pipeline), source,
                      depay, h264parse, filter, appsink,
                      NULL);
+
+    GstBus *bus = gst_pipeline_get_bus (GST_PIPELINE (pipeline));
+
+    guint bus_watch_id = gst_bus_add_watch(bus, bus_message_received, NULL);
+
+    gst_object_unref (bus);
+
 
     /* Leave the actual source out - this will be done when the pad is added */
     if (!gst_element_link_many(depay, filter, h264parse,
